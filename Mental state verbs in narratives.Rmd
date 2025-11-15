@@ -29,12 +29,12 @@ library(officer)
 d <- read_xls("mental_state_verbs.xlsx")
 # # bring columns to correct form
 # d$id <- as.factor(d$id)
-# d$narrative_type <- as.factor(d$narrative_type)
+# d$narrative_genre <- as.factor(d$narrative_genre)
 # d$story <- as.factor(d$story)
 # d$mental_state_category <- as.factor(d$mental_state_category)
 # 
 # # contrast code categorical predictors
-# contrasts(d$narrative_type) <- contr.sum(2) # GT = 1, MAIN = -1
+# contrasts(d$narrative_genre) <- contr.sum(2) # GT = 1, MAIN = -1
 # contrasts(d$mental_state_category) <- contr.sum(5) # "sociorelational" = reference
 ```
 
@@ -114,13 +114,13 @@ d <- read_xls("mental_state_verbs.xlsx")
 ```{r}
 ## dependant variable: How often do they use mental state types, out of the total words produced?
 ## independant variable:
-### narrative_type*mental_state_category: Do children use different types of mental state verbs depending on the narrative context?
+### narrative_genre*mental_state_category: Do children use different types of mental state verbs depending on the narrative context?
 ## random effects
 ### (1 | id): Random intercept for each child — controls for individual differences in overall mental state word use.
 ### (1 + mental_state_category | story): Random intercept and slope by story: allowing different stories to have different average levels of mental verb use, and also different effects of mental state category.
 
 
-# m_lemma <- brm(types_count|trials(total_words) ~ narrative_type*mental_state_category + (1|id) + (1+mental_state_category|story),
+# m_lemma <- brm(types_count|trials(total_words) ~ narrative_genre*mental_state_category + (1|id) + (1+mental_state_category|story),
 #          prior = c(prior(normal(0, 10), class = Intercept),
 #                 prior(normal(0, 10), class = b)),
 #          data = d,
@@ -140,33 +140,33 @@ summary(m_lemma)
 # # Extract posterior samples
 # arr_m_lemma<-as.mcmc(m_lemma,combine_chains=TRUE)
 # intercept_m_lemma <- arr_m_lemma[, "b_Intercept"]
-# b_narrative_type1__m_lemma <- arr_m_lemma[, "b_narrative_type1"]
+# b_narrative_genre1__m_lemma <- arr_m_lemma[, "b_narrative_genre1"]
 # b_mental_state_category1__m_lemma <- arr_m_lemma[, "b_mental_state_category1"]
 # b_mental_state_category2__m_lemma <- arr_m_lemma[, "b_mental_state_category2"]
 # b_mental_state_category3__m_lemma <- arr_m_lemma[, "b_mental_state_category3"]
 # b_mental_state_category4__m_lemma <- arr_m_lemma[, "b_mental_state_category4"]
 # 
-# b_narrative_type1_mental_state_category1__m_lemma <- arr_m_lemma[,
-# "b_narrative_type1:mental_state_category1"]
-# b_narrative_type1_mental_state_category2__m_lemma <- arr_m_lemma[, "b_narrative_type1:mental_state_category2"]
-# b_narrative_type1_mental_state_category3__m_lemma <- arr_m_lemma[, "b_narrative_type1:mental_state_category3"]
-# b_narrative_type1_mental_state_category4__m_lemma <- arr_m_lemma[, "b_narrative_type1:mental_state_category4"]
+# b_narrative_genre1_mental_state_category1__m_lemma <- arr_m_lemma[,
+# "b_narrative_genre1:mental_state_category1"]
+# b_narrative_genre1_mental_state_category2__m_lemma <- arr_m_lemma[, "b_narrative_genre1:mental_state_category2"]
+# b_narrative_genre1_mental_state_category3__m_lemma <- arr_m_lemma[, "b_narrative_genre1:mental_state_category3"]
+# b_narrative_genre1_mental_state_category4__m_lemma <- arr_m_lemma[, "b_narrative_genre1:mental_state_category4"]
 # 
 # # Calculate posterior samples for the missing levels
 # b_mental_state_category5__m_lemma <- -(b_mental_state_category1__m_lemma + b_mental_state_category2__m_lemma + b_mental_state_category3__m_lemma + b_mental_state_category4__m_lemma)
-# b_narrative_type1_mental_state_category5__m_lemma <- -(b_narrative_type1_mental_state_category1__m_lemma + b_narrative_type1_mental_state_category2__m_lemma + b_narrative_type1_mental_state_category3__m_lemma + b_narrative_type1_mental_state_category4__m_lemma)
+# b_narrative_genre1_mental_state_category5__m_lemma <- -(b_narrative_genre1_mental_state_category1__m_lemma + b_narrative_genre1_mental_state_category2__m_lemma + b_narrative_genre1_mental_state_category3__m_lemma + b_narrative_genre1_mental_state_category4__m_lemma)
 # 
 # # Calculate estimates and credible intervals
 # est_b_mental_state_category5__m_lemma <- mean(b_mental_state_category5__m_lemma)
 # ci_b_mental_state_category5__m_lemma <- quantile(b_mental_state_category5__m_lemma, c(0.025, 0.975))
 # 
-# est_b_narrative_type1_mental_state_category5__m_lemma <- mean(b_narrative_type1_mental_state_category5__m_lemma)
-# ci_b_narrative_type1_mental_state_category5__m_lemma <- quantile(b_narrative_type1_mental_state_category5__m_lemma, c(0.025, 0.975))
+# est_b_narrative_genre1_mental_state_category5__m_lemma <- mean(b_narrative_genre1_mental_state_category5__m_lemma)
+# ci_b_narrative_genre1_mental_state_category5__m_lemma <- quantile(b_narrative_genre1_mental_state_category5__m_lemma, c(0.025, 0.975))
 # 
 # # Print the results
 # missing_levels_m_lemma <- list(
 #   mental_state_category5__m_lemma = list(estimate = est_b_mental_state_category5__m_lemma, CI = ci_b_mental_state_category5__m_lemma),
-#   narrative_type1_mental_state_category5__m_lemma = list(estimate = est_b_narrative_type1_mental_state_category5__m_lemma, CI = ci_b_narrative_type1_mental_state_category5__m_lemma))
+#   narrative_genre1_mental_state_category5__m_lemma = list(estimate = est_b_narrative_genre1_mental_state_category5__m_lemma, CI = ci_b_narrative_genre1_mental_state_category5__m_lemma))
 # 
 
 missing_levels_m_lemma # main effect of sociorelational
@@ -176,13 +176,13 @@ missing_levels_m_lemma # main effect of sociorelational
 ```{r}
 ## dependant variable: How often do they use mental state tokens, out of the total words produced?
 ## independant variable:
-### narrative_type*mental_state_category: Do children use different types of mental state verbs depending on the narrative context?
+### narrative_genre*mental_state_category: Do children use different types of mental state verbs depending on the narrative context?
 ## random effects
 ### (1 | id): Random intercept for each child — controls for individual differences in overall mental state word use.
 ### (1 + mental_state_category | story): Random intercept and slope by story: allowing different stories to have different average levels of mental verb use, and also different effects of mental state category.
 
 
-# m_token <- brm(tokens_count|trials(total_words) ~ narrative_type*mental_state_category + (1|id) + (1+mental_state_category|story),
+# m_token <- brm(tokens_count|trials(total_words) ~ narrative_genre*mental_state_category + (1|id) + (1+mental_state_category|story),
 #          prior = c(prior(normal(0, 10), class = Intercept),
 #                 prior(normal(0, 10), class = b)),
 #          data = d,
@@ -203,33 +203,33 @@ fixef(m_token)
 # # Extract posterior samples
 # arr_m_token<-as.mcmc(m_token,combine_chains=TRUE)
 # intercept_m_token <- arr_m_token[, "b_Intercept"]
-# b_narrative_type1__m_token <- arr_m_token[, "b_narrative_type1"]
+# b_narrative_genre1__m_token <- arr_m_token[, "b_narrative_genre1"]
 # b_mental_state_category1__m_token <- arr_m_token[, "b_mental_state_category1"]
 # b_mental_state_category2__m_token <- arr_m_token[, "b_mental_state_category2"]
 # b_mental_state_category3__m_token <- arr_m_token[, "b_mental_state_category3"]
 # b_mental_state_category4__m_token <- arr_m_token[, "b_mental_state_category4"]
 # 
-# b_narrative_type1_mental_state_category1__m_token <- arr_m_token[,
-# "b_narrative_type1:mental_state_category1"]
-# b_narrative_type1_mental_state_category2__m_token <- arr_m_token[, "b_narrative_type1:mental_state_category2"]
-# b_narrative_type1_mental_state_category3__m_token <- arr_m_token[, "b_narrative_type1:mental_state_category3"]
-# b_narrative_type1_mental_state_category4__m_token <- arr_m_token[, "b_narrative_type1:mental_state_category4"]
+# b_narrative_genre1_mental_state_category1__m_token <- arr_m_token[,
+# "b_narrative_genre1:mental_state_category1"]
+# b_narrative_genre1_mental_state_category2__m_token <- arr_m_token[, "b_narrative_genre1:mental_state_category2"]
+# b_narrative_genre1_mental_state_category3__m_token <- arr_m_token[, "b_narrative_genre1:mental_state_category3"]
+# b_narrative_genre1_mental_state_category4__m_token <- arr_m_token[, "b_narrative_genre1:mental_state_category4"]
 # 
 # # Calculate posterior samples for the missing levels
 # b_mental_state_category5__m_token <- -(b_mental_state_category1__m_token + b_mental_state_category2__m_token + b_mental_state_category3__m_token + b_mental_state_category4__m_token)
-# b_narrative_type1_mental_state_category5__m_token <- -(b_narrative_type1_mental_state_category1__m_token + b_narrative_type1_mental_state_category2__m_token + b_narrative_type1_mental_state_category3__m_token + b_narrative_type1_mental_state_category4__m_token)
+# b_narrative_genre1_mental_state_category5__m_token <- -(b_narrative_genre1_mental_state_category1__m_token + b_narrative_genre1_mental_state_category2__m_token + b_narrative_genre1_mental_state_category3__m_token + b_narrative_genre1_mental_state_category4__m_token)
 # 
 # # Calculate estimates and credible intervals
 # est_b_mental_state_category5__m_token <- mean(b_mental_state_category5__m_token)
 # ci_b_mental_state_category5__m_token <- quantile(b_mental_state_category5__m_token, c(0.025, 0.975))
 # 
-# est_b_narrative_type1_mental_state_category5__m_token <- mean(b_narrative_type1_mental_state_category5__m_token)
-# ci_b_narrative_type1_mental_state_category5__m_token <- quantile(b_narrative_type1_mental_state_category5__m_token, c(0.025, 0.975))
+# est_b_narrative_genre1_mental_state_category5__m_token <- mean(b_narrative_genre1_mental_state_category5__m_token)
+# ci_b_narrative_genre1_mental_state_category5__m_token <- quantile(b_narrative_genre1_mental_state_category5__m_token, c(0.025, 0.975))
 # 
 # # Print the results
 # missing_levels_m_token <- list(
 #   mental_state_category5__m_token = list(estimate = est_b_mental_state_category5__m_token, CI = ci_b_mental_state_category5__m_token),
-#   narrative_type1_mental_state_category5__m_token = list(estimate = est_b_narrative_type1_mental_state_category5__m_token, CI = ci_b_narrative_type1_mental_state_category5__m_token))
+#   narrative_genre1_mental_state_category5__m_token = list(estimate = est_b_narrative_genre1_mental_state_category5__m_token, CI = ci_b_narrative_genre1_mental_state_category5__m_token))
 # 
 
 missing_levels_m_token # main effect of sociorelational
@@ -238,27 +238,27 @@ missing_levels_m_token # main effect of sociorelational
 # Plots
 ```{r}
 # Get marginal predictions for the interaction
-emm_lemma <- emmeans(m_lemma, ~ narrative_type * mental_state_category, type = "response")
-emm_token <- emmeans(m_token, ~ narrative_type * mental_state_category, type = "response")
+emm_lemma <- emmeans(m_lemma, ~ narrative_genre * mental_state_category, type = "response")
+emm_token <- emmeans(m_token, ~ narrative_genre * mental_state_category, type = "response")
 
 # Convert to dataframe
 emm_df_lemma <- as.data.frame(emm_lemma)
 emm_df_token <- as.data.frame(emm_token)
 
 # Recode MAIN → fictional, GT → personal
-emm_df_lemma$narrative_type <- recode(emm_df_lemma$narrative_type,
+emm_df_lemma$narrative_genre <- recode(emm_df_lemma$narrative_genre,
                                       "MAIN" = "fictional",
                                       "GT"   = "personal")
-emm_df_token$narrative_type <- recode(emm_df_token$narrative_type,
+emm_df_token$narrative_genre <- recode(emm_df_token$narrative_genre,
                                       "MAIN" = "fictional",
                                       "GT"   = "personal")
 
 # Relevel so fictional is first, personal second
-emm_df_lemma$narrative_type <- fct_relevel(emm_df_lemma$narrative_type,
+emm_df_lemma$narrative_genre <- fct_relevel(emm_df_lemma$narrative_genre,
                                            "fictional", "personal")
-emm_df_token$narrative_type <- fct_relevel(emm_df_token$narrative_type,
+emm_df_token$narrative_genre <- fct_relevel(emm_df_token$narrative_genre,
                                            "fictional", "personal")
-lemmas <- ggplot(emm_df_lemma, aes(x = narrative_type, y = prob, color = mental_state_category, group = mental_state_category)) +
+lemmas <- ggplot(emm_df_lemma, aes(x = narrative_genre, y = prob, color = mental_state_category, group = mental_state_category)) +
   geom_point(position = position_dodge(width = 0.5)) +
   geom_line(position = position_dodge(width = 0.5)) +
   geom_errorbar(aes(ymin = lower.HPD, ymax = upper.HPD), width = 0.2, position = position_dodge(width = 0.5)) +
@@ -272,19 +272,19 @@ lemmas <- ggplot(emm_df_lemma, aes(x = narrative_type, y = prob, color = mental_
    values = c(
      "emotion" = "#F8766D",
      "experiential" = "#B79F00",
-     "metacognitive" = "#00BA38",
+     "cognitive" = "#00BA38",
      "motivational" = "#619CFF",
      "sociorelational" = "#F564E3"
    ),
    labels = c(
-     "metacognitive" = "cognitive",
+     "cognitive" = "cognitive",
      "sociorelational" = "socio-relational"
    )
  ) +
   guides(color = "none") + # Suppress the unwanted legends
   theme_minimal()
 
-tokens <- ggplot(emm_df_token, aes(x = narrative_type, y = prob, color = mental_state_category, group = mental_state_category)) +
+tokens <- ggplot(emm_df_token, aes(x = narrative_genre, y = prob, color = mental_state_category, group = mental_state_category)) +
   geom_point(position = position_dodge(width = 0.5)) +
   geom_line(position = position_dodge(width = 0.5)) +
   geom_errorbar(aes(ymin = lower.HPD, ymax = upper.HPD), width = 0.2, position = position_dodge(width = 0.5)) +
@@ -297,12 +297,12 @@ tokens <- ggplot(emm_df_token, aes(x = narrative_type, y = prob, color = mental_
     values = c(
       "emotion" = "#F8766D",
       "experiential" = "#B79F00",
-      "metacognitive" = "#00BA38",
+      "cognitive" = "#00BA38",
       "motivational" = "#619CFF",
       "sociorelational" = "#F564E3"
     ),
     labels = c(
-      "metacognitive" = "cognitive",
+      "cognitive" = "cognitive",
       "sociorelational" = "socio-relational"
     )
   ) +
