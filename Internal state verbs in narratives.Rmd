@@ -1,5 +1,5 @@
 ---
-title: "Mental state verbs in narratives"
+title: "Internal state verbs in narratives"
 output: pdf_document
 date: "2025-08-11"
 ---
@@ -120,14 +120,21 @@ d <- read_xls("mental_state_verbs.xlsx")
 ### (1 + mental_state_category | story): Random intercept and slope by story: allowing different stories to have different average levels of mental verb use, and also different effects of mental state category.
 
 
-# m_lemma <- brm(types_count|trials(total_words) ~ narrative_genre*mental_state_category + (1|id) + (1+mental_state_category|story),
-#          prior = c(prior(normal(0, 10), class = Intercept),
-#                 prior(normal(0, 10), class = b)),
-#          data = d,
-#          family = binomial,
-#          chains = 4, cores = 4, iter = 8000)
+# first center age around the mean, so that the intercept represents type/token ratio at th mean age and other factors are interpreted against the mean age
+d$c_age <- d$age - mean(d$age)
 
-m_lemma <- readRDS("m_lemma.RDS")
+m_lemma <- brm(lemma_mental_score|trials(total_words) ~
+                     narrative_type*mental_state_category +
+                     narrative_type*c_age + 
+                     mental_state_category*c_age +
+                     (1|id) + (1+mental_state_category|story),
+         prior = c(prior(normal(0, 10), class = Intercept),
+                prior(normal(0, 10), class = b)),
+         data = d,
+         family = binomial,
+         chains = 4, cores = 4, iter = 8000)
+saveRDS(m_lemma, "m_lemma.RDS")
+
 
 plot(m_lemma) # no convergence problems visible
 
@@ -140,6 +147,7 @@ summary(m_lemma)
 # # Extract posterior samples
 # arr_m_lemma<-as.mcmc(m_lemma,combine_chains=TRUE)
 # intercept_m_lemma <- arr_m_lemma[, "b_Intercept"]
+# b_c_age_m_lemma <- arr_m_lemma[, "b_c_age"]
 # b_narrative_genre1__m_lemma <- arr_m_lemma[, "b_narrative_genre1"]
 # b_mental_state_category1__m_lemma <- arr_m_lemma[, "b_mental_state_category1"]
 # b_mental_state_category2__m_lemma <- arr_m_lemma[, "b_mental_state_category2"]
@@ -152,9 +160,15 @@ summary(m_lemma)
 # b_narrative_genre1_mental_state_category3__m_lemma <- arr_m_lemma[, "b_narrative_genre1:mental_state_category3"]
 # b_narrative_genre1_mental_state_category4__m_lemma <- arr_m_lemma[, "b_narrative_genre1:mental_state_category4"]
 # 
+# b_mental_state_category1_c_age__m_lemma <- arr_m_lemma[, "b_mental_state_category1:c_age"]
+# b_mental_state_category2_c_age__m_lemma <- arr_m_lemma[, "b_mental_state_category2:c_age"]
+# b_mental_state_category3_c_age__m_lemma <- arr_m_lemma[, "b_mental_state_category3:c_age"]
+# b_mental_state_category4_c_age__m_lemma <- arr_m_lemma[, "b_mental_state_category4:c_age"]
+# 
 # # Calculate posterior samples for the missing levels
 # b_mental_state_category5__m_lemma <- -(b_mental_state_category1__m_lemma + b_mental_state_category2__m_lemma + b_mental_state_category3__m_lemma + b_mental_state_category4__m_lemma)
 # b_narrative_genre1_mental_state_category5__m_lemma <- -(b_narrative_genre1_mental_state_category1__m_lemma + b_narrative_genre1_mental_state_category2__m_lemma + b_narrative_genre1_mental_state_category3__m_lemma + b_narrative_genre1_mental_state_category4__m_lemma)
+# b_mental_state_category5_c_age__m_lemma <- -(b_mental_state_category1_c_age__m_lemma + b_mental_state_category2_c_age__m_lemma + b_mental_state_category3_c_age__m_lemma + b_mental_state_category4_c_age__m_lemma)
 # 
 # # Calculate estimates and credible intervals
 # est_b_mental_state_category5__m_lemma <- mean(b_mental_state_category5__m_lemma)
@@ -163,10 +177,14 @@ summary(m_lemma)
 # est_b_narrative_genre1_mental_state_category5__m_lemma <- mean(b_narrative_genre1_mental_state_category5__m_lemma)
 # ci_b_narrative_genre1_mental_state_category5__m_lemma <- quantile(b_narrative_genre1_mental_state_category5__m_lemma, c(0.025, 0.975))
 # 
+# est_b_mental_state_category5_c_age__m_lemma <- mean(b_mental_state_category5_c_age__m_lemma)
+# ci_b_mental_state_category5_c_age__m_lemma <- quantile(b_mental_state_category5_c_age__m_lemma, c(0.025, 0.975))
+# 
 # # Print the results
 # missing_levels_m_lemma <- list(
 #   mental_state_category5__m_lemma = list(estimate = est_b_mental_state_category5__m_lemma, CI = ci_b_mental_state_category5__m_lemma),
-#   narrative_genre1_mental_state_category5__m_lemma = list(estimate = est_b_narrative_genre1_mental_state_category5__m_lemma, CI = ci_b_narrative_genre1_mental_state_category5__m_lemma))
+#   narrative_genre1_mental_state_category5__m_lemma = list(estimate = est_b_narrative_genre1_mental_state_category5__m_lemma, CI = ci_b_narrative_genre1_mental_state_category5__m_lemma),
+#   mental_state_category5_c_age__m_lemma = list(estimate = est_b_mental_state_category5_c_age__m_lemma, CI = ci_b_mental_state_category5_c_age__m_lemma))
 # 
 
 missing_levels_m_lemma # main effect of sociorelational
@@ -182,13 +200,17 @@ missing_levels_m_lemma # main effect of sociorelational
 ### (1 + mental_state_category | story): Random intercept and slope by story: allowing different stories to have different average levels of mental verb use, and also different effects of mental state category.
 
 
-# m_token <- brm(tokens_count|trials(total_words) ~ narrative_genre*mental_state_category + (1|id) + (1+mental_state_category|story),
+# m_token <- brm(total_mental_score|trials(total_words) ~
+#                      narrative_type*mental_state_category +
+#                      narrative_type*c_age + 
+#                      mental_state_category*c_age + (1|id) + (1+mental_state_category|story),
 #          prior = c(prior(normal(0, 10), class = Intercept),
 #                 prior(normal(0, 10), class = b)),
 #          data = d,
 #          family = binomial,
 #          chains = 4, cores = 4, iter = 8000)
-# saveRDS(m_token, "/Users/elnahaffner/Library/CloudStorage/OneDrive-Leibniz-ZAS/PhD/CATENATE/CATENATE_final stats/m_token.RDS")
+# 
+# saveRDS(m_token, "m_token.RDS")
 
 m_token <- readRDS("m_token.RDS")
 
@@ -203,6 +225,7 @@ fixef(m_token)
 # # Extract posterior samples
 # arr_m_token<-as.mcmc(m_token,combine_chains=TRUE)
 # intercept_m_token <- arr_m_token[, "b_Intercept"]
+# b_c_age_m_token <- arr_m_token[, "b_c_age"]
 # b_narrative_genre1__m_token <- arr_m_token[, "b_narrative_genre1"]
 # b_mental_state_category1__m_token <- arr_m_token[, "b_mental_state_category1"]
 # b_mental_state_category2__m_token <- arr_m_token[, "b_mental_state_category2"]
@@ -215,9 +238,15 @@ fixef(m_token)
 # b_narrative_genre1_mental_state_category3__m_token <- arr_m_token[, "b_narrative_genre1:mental_state_category3"]
 # b_narrative_genre1_mental_state_category4__m_token <- arr_m_token[, "b_narrative_genre1:mental_state_category4"]
 # 
+# b_mental_state_category1_c_age__m_token <- arr_m_token[, "b_mental_state_category1:c_age"]
+# b_mental_state_category2_c_age__m_token <- arr_m_token[, "b_mental_state_category2:c_age"]
+# b_mental_state_category3_c_age__m_token <- arr_m_token[, "b_mental_state_category3:c_age"]
+# b_mental_state_category4_c_age__m_token <- arr_m_token[, "b_mental_state_category4:c_age"]
+# 
 # # Calculate posterior samples for the missing levels
 # b_mental_state_category5__m_token <- -(b_mental_state_category1__m_token + b_mental_state_category2__m_token + b_mental_state_category3__m_token + b_mental_state_category4__m_token)
 # b_narrative_genre1_mental_state_category5__m_token <- -(b_narrative_genre1_mental_state_category1__m_token + b_narrative_genre1_mental_state_category2__m_token + b_narrative_genre1_mental_state_category3__m_token + b_narrative_genre1_mental_state_category4__m_token)
+# b_mental_state_category5_c_age__m_token <- -(b_mental_state_category1_c_age__m_token + b_mental_state_category2_c_age__m_token + b_mental_state_category3_c_age__m_token + b_mental_state_category4_c_age__m_token)
 # 
 # # Calculate estimates and credible intervals
 # est_b_mental_state_category5__m_token <- mean(b_mental_state_category5__m_token)
@@ -226,10 +255,14 @@ fixef(m_token)
 # est_b_narrative_genre1_mental_state_category5__m_token <- mean(b_narrative_genre1_mental_state_category5__m_token)
 # ci_b_narrative_genre1_mental_state_category5__m_token <- quantile(b_narrative_genre1_mental_state_category5__m_token, c(0.025, 0.975))
 # 
+# est_b_mental_state_category5_c_age__m_token <- mean(b_mental_state_category5_c_age__m_token)
+# ci_b_mental_state_category5_c_age__m_token <- quantile(b_mental_state_category5_c_age__m_token, c(0.025, 0.975))
+# 
 # # Print the results
 # missing_levels_m_token <- list(
 #   mental_state_category5__m_token = list(estimate = est_b_mental_state_category5__m_token, CI = ci_b_mental_state_category5__m_token),
-#   narrative_genre1_mental_state_category5__m_token = list(estimate = est_b_narrative_genre1_mental_state_category5__m_token, CI = ci_b_narrative_genre1_mental_state_category5__m_token))
+#   narrative_genre1_mental_state_category5__m_token = list(estimate = est_b_narrative_genre1_mental_state_category5__m_token, CI = ci_b_narrative_genre1_mental_state_category5__m_token),
+#   mental_state_category5_c_age__m_token = list(estimate = est_b_mental_state_category5_c_age__m_token, CI = ci_b_mental_state_category5_c_age__m_token))
 # 
 
 missing_levels_m_token # main effect of sociorelational
