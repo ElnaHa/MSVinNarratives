@@ -26,189 +26,179 @@ library(officer)
 # Data preparation for modeling
 ```{r}
 # load data
-d <- read_xls("mental_state_verbs.xlsx")
+d <- read_xls("internal_state_verbs.xlsx")
 # # bring columns to correct form
 # d$id <- as.factor(d$id)
 # d$narrative_genre <- as.factor(d$narrative_genre)
 # d$story <- as.factor(d$story)
-# d$mental_state_category <- as.factor(d$mental_state_category)
+# d$internal_state_category <- as.factor(d$internal_state_category)
+# d$c_age <- d$age - mean(d$age)
 # 
 # # contrast code categorical predictors
 # contrasts(d$narrative_genre) <- contr.sum(2) # GT = 1, MAIN = -1
-# contrasts(d$mental_state_category) <- contr.sum(5) # "sociorelational" = reference
+# contrasts(d$internal_state_category) <- contr.sum(5) # "sociorelational" = left out
 ```
 
-# Before we ran the models, we checked if scores for mental state category varied between stories via model comparison. 
+# Before we ran the models, we checked if scores for internal state category varied between stories via model comparison. 
 ```{r}
-# #model comparison to check if mental_state_category is different between stories
-# bmtypes <- brm(types_count|trials(total_words) ~ 1 + (1|id)+ (1|story),
-#            data = d,
-#            family = binomial(),
-#            iter = 6000, warmup = 2000, cores = 4, chains = 4,
-#            #backend = "cmdstanr"
-#            )%>%
-#   add_criterion(., c("waic","loo"))
+# #model comparison to check if internal_state_category is different between stories for types ratio
+# base <- brm(types|trials(total_words) ~ narrative_genre*internal_state_category +
+#               narrative_genre*c_age + internal_state_category*c_age + (1|id)+ (1|story),
+#             data = d,
+#             family = binomial(),
+#             prior = c(prior(normal(0,10), class="Intercept"),
+#                       prior(normal(0,10), class="b")),
+#             cores = 4, chains = 4, iter = 8000)
 # 
-# bmtypes_1 <- brm(types_count|trials(total_words) ~ mental_state_category + (1|id) + (1|story),
-#            data = d,
-#            family = binomial(),
-#            control = list(adapt_delta = 0.95),
-#            iter = 6000, warmup = 2000, cores = 4, chains = 4,
-#            #backend = "cmdstanr"
-#            )%>%
-#   add_criterion(., c("waic","loo"))
+# slope_cor <- brm(types|trials(total_words) ~ narrative_genre*internal_state_category +
+#                    narrative_genre*c_age + internal_state_category*c_age +
+#                    (1|id) + (1+internal_state_category|story),
+#                  data = d,
+#                  family = binomial(),
+#                  prior = c(prior(normal(0,10), class="Intercept"),
+#                            prior(normal(0,10), class="b"),
+#                            prior(lkj(2), class="cor")),
+#                  cores = 4, chains = 4, iter = 8000)
 # 
-# bmtypes_2 <- brm(types_count|trials(total_words) ~ mental_state_category + (1|id) + (mental_state_category|story),
-#            data = d,
-#            family = binomial(),
-#            control = list(adapt_delta = 0.95),
-#            iter = 6000, warmup = 2000, cores = 4, chains = 4,
-#            #backend = "cmdstanr"
-#            )%>%
-#   add_criterion(., c("waic","loo"))
+# slope_uncor <- brm(types|trials(total_words) ~ narrative_genre*internal_state_category +
+#                      narrative_genre*c_age + internal_state_category*c_age +
+#                      (1|id) + (1+internal_state_category||story),
+#                    data = d,
+#                    family = binomial(),
+#                    prior = c(prior(normal(0,10), class="Intercept"),
+#                              prior(normal(0,10), class="b")),
+#                    cores = 4, chains = 4, iter = 8000)
 # 
-# comp_types <- left_join(
-#   loo_compare(bmtypes_2, bmtypes_1, bmtypes, criterion = "waic")%>%as_tibble(rownames = "model"),
-#   model_weights(bmtypes_2, bmtypes_1, bmtypes, weights = "waic")%>%as_tibble(rownames = "model"))%>%#rename(weight = value))%>%
-#   mutate_if(is.numeric, round, 2)%>%
-#   mutate_if(is.numeric, format, nsmall = 2)
+# # add LOO to each fit
+# base <- add_criterion(base, "loo")
+# slope_cor <- add_criterion(slope_cor, "loo")
+# slope_uncor <- add_criterion(slope_uncor, "loo")
 # 
-# fix_bmtypes2 <- fixef(bmtypes_2)%>%as_tibble(rownames = "term")%>%mutate_if(is.numeric, round, 2)
+# # compare
+# loo_compare(slope_cor, slope_uncor, base) # moderate evidence for using the slope_cor model: diff = 1.5 x sd
+# 
+# 
+# #model comparison to check if internal_state_category is different between stories for tokens ratio
+# 
+# base2 <- brm(tokens|trials(total_words) ~ narrative_genre*internal_state_category +
+#               narrative_genre*c_age + internal_state_category*c_age + (1|id)+ (1|story),
+#             data = d,
+#             family = binomial(),
+#             prior = c(prior(normal(0,10), class="Intercept"),
+#                       prior(normal(0,10), class="b")),
+#             cores = 4, chains = 4, iter = 8000)
+# 
+# slope_cor2 <- brm(tokens|trials(total_words) ~ narrative_genre*internal_state_category +
+#                    narrative_genre*c_age + internal_state_category*c_age +
+#                    (1|id) + (1+internal_state_category|story),
+#                  data = d,
+#                  family = binomial(),
+#                  prior = c(prior(normal(0,10), class="Intercept"),
+#                            prior(normal(0,10), class="b"),
+#                            prior(lkj(2), class="cor")),
+#                  cores = 4, chains = 4, iter = 8000)
+# 
+# slope_uncor2 <- brm(tokens|trials(total_words) ~ narrative_genre*internal_state_category +
+#                      narrative_genre*c_age + internal_state_category*c_age +
+#                      (1|id) + (1+internal_state_category||story),
+#                    data = d,
+#                    family = binomial(),
+#                    prior = c(prior(normal(0,10), class="Intercept"),
+#                              prior(normal(0,10), class="b")),
+#                    cores = 4, chains = 4, iter = 8000)
+# 
+# # add LOO to each fit
+# base2 <- add_criterion(base2, "loo")
+# slope_cor2 <- add_criterion(slope_cor2, "loo", moment_match = TRUE)
+# slope_uncor2 <- add_criterion(slope_uncor2, "loo", moment_match = TRUE)
+# 
+# # compare
+# loo_compare(slope_cor2, slope_uncor2, base2) # evidence for using the slope_cor model: diff = 2 x sd
 
-# bmtokens <- brm(tokens_count|trials(total_words) ~ 1 + (1|id)+ (1|story),
-#            data = d,
-#            family = binomial(),
-#            iter = 6000, warmup = 2000, cores = 4, chains = 4,
-#            #backend = "cmdstanr"
-#            )%>%
-#   add_criterion(., c("waic","loo"))
-# 
-# bmtokens_1 <- brm(tokens_count|trials(total_words) ~ mental_state_category + (1|id) + (1|story),
-#            data = d,
-#            family = binomial(),
-#            control = list(adapt_delta = 0.95),
-#            iter = 6000, warmup = 2000, cores = 4, chains = 4,
-#            #backend = "cmdstanr"
-#            )%>%
-#   add_criterion(., c("waic","loo"))
-# 
-# bmtokens_2 <- brm(tokens_count|trials(total_words) ~ mental_state_category + (1|id) + (mental_state_category|story),
-#            data = d,
-#            family = binomial(),
-#            control = list(adapt_delta = 0.95),
-#            iter = 6000, warmup = 2000, cores = 4, chains = 4,
-#            #backend = "cmdstanr"
-#            )%>%
-#   add_criterion(., c("waic","loo"))
-# 
-# comp_tokens <- left_join(
-#   loo_compare(bmtokens_2, bmtokens_1, bmtokens, criterion = "waic")%>%as_tibble(rownames = "model"),
-#   model_weights(bmtokens_2, bmtokens_1, bmtokens, weights = "waic")%>%as_tibble(rownames = "model"))%>%#rename(weight = value))%>%
-#   mutate_if(is.numeric, round, 2)%>%
-#   mutate_if(is.numeric, format, nsmall = 2)
-# 
-# fix_bmtokens_2 <- fixef(bmtokens_2)%>%as_tibble(rownames = "term")%>%mutate_if(is.numeric, round, 2)
 ```
 
-# Variation: model for types of MSV 
+# Variation: model for types of ISV 
 ```{r}
-## dependant variable: How often do they use mental state types, out of the total words produced?
+## dependant variable: How often do they use internal state types, out of the total words produced?
 ## independant variable:
-### narrative_genre*mental_state_category: Do children use different types of mental state verbs depending on the narrative context?
+### narrative_genre: Do children use ISVs differently between narrative genres?
+### internal_state_category: Do children use ISVs differently between categories?
+### narrative_genre*internal_state_category: Do children use different categories of internal state verbs depending on the narrative genre?
 ## random effects
-### (1 | id): Random intercept for each child — controls for individual differences in overall mental state word use.
-### (1 + mental_state_category | story): Random intercept and slope by story: allowing different stories to have different average levels of mental verb use, and also different effects of mental state category.
+### (1 | id): Random intercept for each child — controls for individual differences in overall internal state verb use.
+### (1 + internal_state_category | story): Random intercept and slope by story: allowing different stories to have different average levels of internal state verb use, and also different effects of internal state category.
+
+m_type <- slope_cor
+saveRDS(m_type, "m_type.RDS")
 
 
-# first center age around the mean, so that the intercept represents type/token ratio at th mean age and other factors are interpreted against the mean age
-d$c_age <- d$age - mean(d$age)
+plot(m_type) # no convergence problems visible
 
-m_lemma <- brm(lemma_mental_score|trials(total_words) ~
-                     narrative_type*mental_state_category +
-                     narrative_type*c_age + 
-                     mental_state_category*c_age +
-                     (1|id) + (1+mental_state_category|story),
-         prior = c(prior(normal(0, 10), class = Intercept),
-                prior(normal(0, 10), class = b)),
-         data = d,
-         family = binomial,
-         chains = 4, cores = 4, iter = 8000)
-saveRDS(m_lemma, "m_lemma.RDS")
-
-
-plot(m_lemma) # no convergence problems visible
-
-fixef(m_lemma)
-summary(m_lemma)
+fixef(m_type)
+summary(m_type)
 ```
 
 ## Extract posterior samples and calculate the missing level coefficients
 ```{r}
 # # Extract posterior samples
-# arr_m_lemma<-as.mcmc(m_lemma,combine_chains=TRUE)
-# intercept_m_lemma <- arr_m_lemma[, "b_Intercept"]
-# b_c_age_m_lemma <- arr_m_lemma[, "b_c_age"]
-# b_narrative_genre1__m_lemma <- arr_m_lemma[, "b_narrative_genre1"]
-# b_mental_state_category1__m_lemma <- arr_m_lemma[, "b_mental_state_category1"]
-# b_mental_state_category2__m_lemma <- arr_m_lemma[, "b_mental_state_category2"]
-# b_mental_state_category3__m_lemma <- arr_m_lemma[, "b_mental_state_category3"]
-# b_mental_state_category4__m_lemma <- arr_m_lemma[, "b_mental_state_category4"]
+# arr_m_type<-as.mcmc(m_type,combine_chains=TRUE)
+# intercept_m_type <- arr_m_type[, "b_Intercept"]
+# b_c_age_m_type <- arr_m_type[, "b_c_age"]
+# b_narrative_genre1__m_type <- arr_m_type[, "b_narrative_genre1"]
+# b_internal_state_category1__m_type <- arr_m_type[, "b_internal_state_category1"]
+# b_internal_state_category2__m_type <- arr_m_type[, "b_internal_state_category2"]
+# b_internal_state_category3__m_type <- arr_m_type[, "b_internal_state_category3"]
+# b_internal_state_category4__m_type <- arr_m_type[, "b_internal_state_category4"]
 # 
-# b_narrative_genre1_mental_state_category1__m_lemma <- arr_m_lemma[,
-# "b_narrative_genre1:mental_state_category1"]
-# b_narrative_genre1_mental_state_category2__m_lemma <- arr_m_lemma[, "b_narrative_genre1:mental_state_category2"]
-# b_narrative_genre1_mental_state_category3__m_lemma <- arr_m_lemma[, "b_narrative_genre1:mental_state_category3"]
-# b_narrative_genre1_mental_state_category4__m_lemma <- arr_m_lemma[, "b_narrative_genre1:mental_state_category4"]
+# b_narrative_genre1_internal_state_category1__m_type <- arr_m_type[,
+# "b_narrative_genre1:internal_state_category1"]
+# b_narrative_genre1_internal_state_category2__m_type <- arr_m_type[, "b_narrative_genre1:internal_state_category2"]
+# b_narrative_genre1_internal_state_category3__m_type <- arr_m_type[, "b_narrative_genre1:internal_state_category3"]
+# b_narrative_genre1_internal_state_category4__m_type <- arr_m_type[, "b_narrative_genre1:internal_state_category4"]
 # 
-# b_mental_state_category1_c_age__m_lemma <- arr_m_lemma[, "b_mental_state_category1:c_age"]
-# b_mental_state_category2_c_age__m_lemma <- arr_m_lemma[, "b_mental_state_category2:c_age"]
-# b_mental_state_category3_c_age__m_lemma <- arr_m_lemma[, "b_mental_state_category3:c_age"]
-# b_mental_state_category4_c_age__m_lemma <- arr_m_lemma[, "b_mental_state_category4:c_age"]
+# b_internal_state_category1_c_age__m_type <- arr_m_type[, "b_internal_state_category1:c_age"]
+# b_internal_state_category2_c_age__m_type <- arr_m_type[, "b_internal_state_category2:c_age"]
+# b_internal_state_category3_c_age__m_type <- arr_m_type[, "b_internal_state_category3:c_age"]
+# b_internal_state_category4_c_age__m_type <- arr_m_type[, "b_internal_state_category4:c_age"]
 # 
 # # Calculate posterior samples for the missing levels
-# b_mental_state_category5__m_lemma <- -(b_mental_state_category1__m_lemma + b_mental_state_category2__m_lemma + b_mental_state_category3__m_lemma + b_mental_state_category4__m_lemma)
-# b_narrative_genre1_mental_state_category5__m_lemma <- -(b_narrative_genre1_mental_state_category1__m_lemma + b_narrative_genre1_mental_state_category2__m_lemma + b_narrative_genre1_mental_state_category3__m_lemma + b_narrative_genre1_mental_state_category4__m_lemma)
-# b_mental_state_category5_c_age__m_lemma <- -(b_mental_state_category1_c_age__m_lemma + b_mental_state_category2_c_age__m_lemma + b_mental_state_category3_c_age__m_lemma + b_mental_state_category4_c_age__m_lemma)
+# b_internal_state_category5__m_type <- -(b_internal_state_category1__m_type + b_internal_state_category2__m_type + b_internal_state_category3__m_type + b_internal_state_category4__m_type)
+# b_narrative_genre1_internal_state_category5__m_type <- -(b_narrative_genre1_internal_state_category1__m_type + b_narrative_genre1_internal_state_category2__m_type + b_narrative_genre1_internal_state_category3__m_type + b_narrative_genre1_internal_state_category4__m_type)
+# b_internal_state_category5_c_age__m_type <- -(b_internal_state_category1_c_age__m_type + b_internal_state_category2_c_age__m_type + b_internal_state_category3_c_age__m_type + b_internal_state_category4_c_age__m_type)
 # 
 # # Calculate estimates and credible intervals
-# est_b_mental_state_category5__m_lemma <- mean(b_mental_state_category5__m_lemma)
-# ci_b_mental_state_category5__m_lemma <- quantile(b_mental_state_category5__m_lemma, c(0.025, 0.975))
+# est_b_internal_state_category5__m_type <- mean(b_internal_state_category5__m_type)
+# ci_b_internal_state_category5__m_type <- quantile(b_internal_state_category5__m_type, c(0.025, 0.975))
 # 
-# est_b_narrative_genre1_mental_state_category5__m_lemma <- mean(b_narrative_genre1_mental_state_category5__m_lemma)
-# ci_b_narrative_genre1_mental_state_category5__m_lemma <- quantile(b_narrative_genre1_mental_state_category5__m_lemma, c(0.025, 0.975))
+# est_b_narrative_genre1_internal_state_category5__m_type <- mean(b_narrative_genre1_internal_state_category5__m_type)
+# ci_b_narrative_genre1_internal_state_category5__m_type <- quantile(b_narrative_genre1_internal_state_category5__m_type, c(0.025, 0.975))
 # 
-# est_b_mental_state_category5_c_age__m_lemma <- mean(b_mental_state_category5_c_age__m_lemma)
-# ci_b_mental_state_category5_c_age__m_lemma <- quantile(b_mental_state_category5_c_age__m_lemma, c(0.025, 0.975))
+# est_b_internal_state_category5_c_age__m_type <- mean(b_internal_state_category5_c_age__m_type)
+# ci_b_internal_state_category5_c_age__m_type <- quantile(b_internal_state_category5_c_age__m_type, c(0.025, 0.975))
 # 
 # # Print the results
-# missing_levels_m_lemma <- list(
-#   mental_state_category5__m_lemma = list(estimate = est_b_mental_state_category5__m_lemma, CI = ci_b_mental_state_category5__m_lemma),
-#   narrative_genre1_mental_state_category5__m_lemma = list(estimate = est_b_narrative_genre1_mental_state_category5__m_lemma, CI = ci_b_narrative_genre1_mental_state_category5__m_lemma),
-#   mental_state_category5_c_age__m_lemma = list(estimate = est_b_mental_state_category5_c_age__m_lemma, CI = ci_b_mental_state_category5_c_age__m_lemma))
+# missing_levels_m_type <- list(
+#   internal_state_category5__m_type = list(estimate = est_b_internal_state_category5__m_type, CI = ci_b_internal_state_category5__m_type),
+#   narrative_genre1_internal_state_category5__m_type = list(estimate = est_b_narrative_genre1_internal_state_category5__m_type, CI = ci_b_narrative_genre1_internal_state_category5__m_type),
+#   internal_state_category5_c_age__m_type = list(estimate = est_b_internal_state_category5_c_age__m_type, CI = ci_b_internal_state_category5_c_age__m_type))
 # 
 
-missing_levels_m_lemma # main effect of sociorelational
+missing_levels_m_type # main effect of sociorelational
 ```
 
-# Frequency: model for tokens of MST 
+# Frequency: model for tokens of ISV 
 ```{r}
-## dependant variable: How often do they use mental state tokens, out of the total words produced?
+## dependant variable: How often do they use internal state types, out of the total words produced?
 ## independant variable:
-### narrative_genre*mental_state_category: Do children use different types of mental state verbs depending on the narrative context?
+### narrative_genre: Do children use ISVs differently between narrative genres?
+### internal_state_category: Do children use ISVs differently between categories?
+### narrative_genre*internal_state_category: Do children use different categories of internal state verbs depending on the narrative genre?
 ## random effects
-### (1 | id): Random intercept for each child — controls for individual differences in overall mental state word use.
-### (1 + mental_state_category | story): Random intercept and slope by story: allowing different stories to have different average levels of mental verb use, and also different effects of mental state category.
+### (1 | id): Random intercept for each child — controls for individual differences in overall internal state verb use.
+### (1 + internal_state_category | story): Random intercept and slope by story: allowing different stories to have different average levels of internal state verb use, and also different effects of internal state category.
 
 
-# m_token <- brm(total_mental_score|trials(total_words) ~
-#                      narrative_type*mental_state_category +
-#                      narrative_type*c_age + 
-#                      mental_state_category*c_age + (1|id) + (1+mental_state_category|story),
-#          prior = c(prior(normal(0, 10), class = Intercept),
-#                 prior(normal(0, 10), class = b)),
-#          data = d,
-#          family = binomial,
-#          chains = 4, cores = 4, iter = 8000)
+# m_token <- slope_cor2
 # 
 # saveRDS(m_token, "m_token.RDS")
 
@@ -227,145 +217,44 @@ fixef(m_token)
 # intercept_m_token <- arr_m_token[, "b_Intercept"]
 # b_c_age_m_token <- arr_m_token[, "b_c_age"]
 # b_narrative_genre1__m_token <- arr_m_token[, "b_narrative_genre1"]
-# b_mental_state_category1__m_token <- arr_m_token[, "b_mental_state_category1"]
-# b_mental_state_category2__m_token <- arr_m_token[, "b_mental_state_category2"]
-# b_mental_state_category3__m_token <- arr_m_token[, "b_mental_state_category3"]
-# b_mental_state_category4__m_token <- arr_m_token[, "b_mental_state_category4"]
+# b_internal_state_category1__m_token <- arr_m_token[, "b_internal_state_category1"]
+# b_internal_state_category2__m_token <- arr_m_token[, "b_internal_state_category2"]
+# b_internal_state_category3__m_token <- arr_m_token[, "b_internal_state_category3"]
+# b_internal_state_category4__m_token <- arr_m_token[, "b_internal_state_category4"]
 # 
-# b_narrative_genre1_mental_state_category1__m_token <- arr_m_token[,
-# "b_narrative_genre1:mental_state_category1"]
-# b_narrative_genre1_mental_state_category2__m_token <- arr_m_token[, "b_narrative_genre1:mental_state_category2"]
-# b_narrative_genre1_mental_state_category3__m_token <- arr_m_token[, "b_narrative_genre1:mental_state_category3"]
-# b_narrative_genre1_mental_state_category4__m_token <- arr_m_token[, "b_narrative_genre1:mental_state_category4"]
+# b_narrative_genre1_internal_state_category1__m_token <- arr_m_token[,
+# "b_narrative_genre1:internal_state_category1"]
+# b_narrative_genre1_internal_state_category2__m_token <- arr_m_token[, "b_narrative_genre1:internal_state_category2"]
+# b_narrative_genre1_internal_state_category3__m_token <- arr_m_token[, "b_narrative_genre1:internal_state_category3"]
+# b_narrative_genre1_internal_state_category4__m_token <- arr_m_token[, "b_narrative_genre1:internal_state_category4"]
 # 
-# b_mental_state_category1_c_age__m_token <- arr_m_token[, "b_mental_state_category1:c_age"]
-# b_mental_state_category2_c_age__m_token <- arr_m_token[, "b_mental_state_category2:c_age"]
-# b_mental_state_category3_c_age__m_token <- arr_m_token[, "b_mental_state_category3:c_age"]
-# b_mental_state_category4_c_age__m_token <- arr_m_token[, "b_mental_state_category4:c_age"]
+# b_internal_state_category1_c_age__m_token <- arr_m_token[, "b_internal_state_category1:c_age"]
+# b_internal_state_category2_c_age__m_token <- arr_m_token[, "b_internal_state_category2:c_age"]
+# b_internal_state_category3_c_age__m_token <- arr_m_token[, "b_internal_state_category3:c_age"]
+# b_internal_state_category4_c_age__m_token <- arr_m_token[, "b_internal_state_category4:c_age"]
 # 
 # # Calculate posterior samples for the missing levels
-# b_mental_state_category5__m_token <- -(b_mental_state_category1__m_token + b_mental_state_category2__m_token + b_mental_state_category3__m_token + b_mental_state_category4__m_token)
-# b_narrative_genre1_mental_state_category5__m_token <- -(b_narrative_genre1_mental_state_category1__m_token + b_narrative_genre1_mental_state_category2__m_token + b_narrative_genre1_mental_state_category3__m_token + b_narrative_genre1_mental_state_category4__m_token)
-# b_mental_state_category5_c_age__m_token <- -(b_mental_state_category1_c_age__m_token + b_mental_state_category2_c_age__m_token + b_mental_state_category3_c_age__m_token + b_mental_state_category4_c_age__m_token)
+# b_internal_state_category5__m_token <- -(b_internal_state_category1__m_token + b_internal_state_category2__m_token + b_internal_state_category3__m_token + b_internal_state_category4__m_token)
+# b_narrative_genre1_internal_state_category5__m_token <- -(b_narrative_genre1_internal_state_category1__m_token + b_narrative_genre1_internal_state_category2__m_token + b_narrative_genre1_internal_state_category3__m_token + b_narrative_genre1_internal_state_category4__m_token)
+# b_internal_state_category5_c_age__m_token <- -(b_internal_state_category1_c_age__m_token + b_internal_state_category2_c_age__m_token + b_internal_state_category3_c_age__m_token + b_internal_state_category4_c_age__m_token)
 # 
 # # Calculate estimates and credible intervals
-# est_b_mental_state_category5__m_token <- mean(b_mental_state_category5__m_token)
-# ci_b_mental_state_category5__m_token <- quantile(b_mental_state_category5__m_token, c(0.025, 0.975))
+# est_b_internal_state_category5__m_token <- mean(b_internal_state_category5__m_token)
+# ci_b_internal_state_category5__m_token <- quantile(b_internal_state_category5__m_token, c(0.025, 0.975))
 # 
-# est_b_narrative_genre1_mental_state_category5__m_token <- mean(b_narrative_genre1_mental_state_category5__m_token)
-# ci_b_narrative_genre1_mental_state_category5__m_token <- quantile(b_narrative_genre1_mental_state_category5__m_token, c(0.025, 0.975))
+# est_b_narrative_genre1_internal_state_category5__m_token <- mean(b_narrative_genre1_internal_state_category5__m_token)
+# ci_b_narrative_genre1_internal_state_category5__m_token <- quantile(b_narrative_genre1_internal_state_category5__m_token, c(0.025, 0.975))
 # 
-# est_b_mental_state_category5_c_age__m_token <- mean(b_mental_state_category5_c_age__m_token)
-# ci_b_mental_state_category5_c_age__m_token <- quantile(b_mental_state_category5_c_age__m_token, c(0.025, 0.975))
+# est_b_internal_state_category5_c_age__m_token <- mean(b_internal_state_category5_c_age__m_token)
+# ci_b_internal_state_category5_c_age__m_token <- quantile(b_internal_state_category5_c_age__m_token, c(0.025, 0.975))
 # 
 # # Print the results
 # missing_levels_m_token <- list(
-#   mental_state_category5__m_token = list(estimate = est_b_mental_state_category5__m_token, CI = ci_b_mental_state_category5__m_token),
-#   narrative_genre1_mental_state_category5__m_token = list(estimate = est_b_narrative_genre1_mental_state_category5__m_token, CI = ci_b_narrative_genre1_mental_state_category5__m_token),
-#   mental_state_category5_c_age__m_token = list(estimate = est_b_mental_state_category5_c_age__m_token, CI = ci_b_mental_state_category5_c_age__m_token))
+#   internal_state_category5__m_token = list(estimate = est_b_internal_state_category5__m_token, CI = ci_b_internal_state_category5__m_token),
+#   narrative_genre1_internal_state_category5__m_token = list(estimate = est_b_narrative_genre1_internal_state_category5__m_token, CI = ci_b_narrative_genre1_internal_state_category5__m_token),
+#   internal_state_category5_c_age__m_token = list(estimate = est_b_internal_state_category5_c_age__m_token, CI = ci_b_internal_state_category5_c_age__m_token))
 # 
 
 missing_levels_m_token # main effect of sociorelational
 ```
 
-# Plots
-```{r}
-# Get marginal predictions for the interaction
-emm_lemma <- emmeans(m_lemma, ~ narrative_genre * mental_state_category, type = "response")
-emm_token <- emmeans(m_token, ~ narrative_genre * mental_state_category, type = "response")
-
-# Convert to dataframe
-emm_df_lemma <- as.data.frame(emm_lemma)
-emm_df_token <- as.data.frame(emm_token)
-
-# Recode MAIN → fictional, GT → personal
-emm_df_lemma$narrative_genre <- recode(emm_df_lemma$narrative_genre,
-                                      "MAIN" = "fictional",
-                                      "GT"   = "personal")
-emm_df_token$narrative_genre <- recode(emm_df_token$narrative_genre,
-                                      "MAIN" = "fictional",
-                                      "GT"   = "personal")
-
-# Relevel so fictional is first, personal second
-emm_df_lemma$narrative_genre <- fct_relevel(emm_df_lemma$narrative_genre,
-                                           "fictional", "personal")
-emm_df_token$narrative_genre <- fct_relevel(emm_df_token$narrative_genre,
-                                           "fictional", "personal")
-lemmas <- ggplot(emm_df_lemma, aes(x = narrative_genre, y = prob, color = mental_state_category, group = mental_state_category)) +
-  geom_point(position = position_dodge(width = 0.5)) +
-  geom_line(position = position_dodge(width = 0.5)) +
-  geom_errorbar(aes(ymin = lower.HPD, ymax = upper.HPD), width = 0.2, position = position_dodge(width = 0.5)) +
-  labs(
-    y = "Probability of producing mental state verb types",
-    x = "Narrative elicitation context",
-    #title = "Model-predicted lemma probabilities by mental state category",
-    color = "MSV group"
-  ) +
- scale_color_manual(
-   values = c(
-     "emotion" = "#F8766D",
-     "experiential" = "#B79F00",
-     "cognitive" = "#00BA38",
-     "motivational" = "#619CFF",
-     "sociorelational" = "#F564E3"
-   ),
-   labels = c(
-     "cognitive" = "cognitive",
-     "sociorelational" = "socio-relational"
-   )
- ) +
-  guides(color = "none") + # Suppress the unwanted legends
-  theme_minimal()
-
-tokens <- ggplot(emm_df_token, aes(x = narrative_genre, y = prob, color = mental_state_category, group = mental_state_category)) +
-  geom_point(position = position_dodge(width = 0.5)) +
-  geom_line(position = position_dodge(width = 0.5)) +
-  geom_errorbar(aes(ymin = lower.HPD, ymax = upper.HPD), width = 0.2, position = position_dodge(width = 0.5)) +
-  labs(
-    y = "Probability of producing mental state verb tokens",
-    x = "Narrative elicitation context",
-    color = "MSV category"
-  ) +
-  scale_color_manual(
-    values = c(
-      "emotion" = "#F8766D",
-      "experiential" = "#B79F00",
-      "cognitive" = "#00BA38",
-      "motivational" = "#619CFF",
-      "sociorelational" = "#F564E3"
-    ),
-    labels = c(
-      "cognitive" = "cognitive",
-      "sociorelational" = "socio-relational"
-    )
-  ) +
-  #guides(color = "none") + # Suppress the unwanted legends
-  theme_minimal()
-
-lemmas
-tokens
-
-# 1. Remove x-axis' labels in plots
-lemmas <- lemmas + theme(axis.title.x = element_blank())
-tokens <- tokens + theme(axis.title.x = element_blank())
-
-# 2. Shared x-axis label with same font size (size = 11)
-x_axis_label <- ggplot() + 
-  annotate(
-    "text", 
-    x = 0.5, y = 0.5, 
-    label = "Narrative elicitation context", 
-    size = 11 / .pt,  # Umrechnung von pt in ggplot-size-Einheiten
-    hjust = 0.5
-  ) +
-  theme_void() +
-  theme(plot.margin = margin(t = -5))  # optional: enger setzen
-
-# 3. Combine plots
-combined <- (lemmas | tokens) / x_axis_label +
-  plot_layout(heights = c(10, 1))  # passt Höhenverhältnis an
-
-# Print
-combined
-
-```
